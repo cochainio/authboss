@@ -52,7 +52,7 @@ const (
 
 const (
 	smsCodeLength       = 6
-	smsRateLimitSeconds = 10
+	smsRateLimitSeconds = 60
 )
 
 var (
