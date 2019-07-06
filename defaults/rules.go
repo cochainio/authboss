@@ -27,6 +27,8 @@ type Rules struct {
 	MinNumeric           int
 	MinSymbols           int
 	AllowWhitespace      bool
+	ConformError         string
+	MustConform          func(string) bool
 }
 
 // Errors returns an array of errors for each validation error that
@@ -69,6 +71,12 @@ func (r Rules) Errors(toValidate string) authboss.ErrorList {
 		errs = append(errs, FieldError{r.FieldName, errors.New("No whitespace permitted")})
 	}
 
+	if r.MustConform != nil {
+		if ok := r.MustConform(toValidate); !ok {
+			errs = append(errs, FieldError{r.FieldName, errors.New(r.ConformError)})
+		}
+	}
+
 	if len(errs) == 0 {
 		return nil
 	}
@@ -106,6 +114,10 @@ func (r Rules) Rules() []string {
 	}
 	if e := r.symbolErr(); len(e) > 0 {
 		rules = append(rules, e)
+	}
+
+	if r.MustConform != nil {
+		rules = append(rules, r.ConformError)
 	}
 
 	return rules

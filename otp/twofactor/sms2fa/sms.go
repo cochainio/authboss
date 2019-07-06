@@ -51,8 +51,8 @@ const (
 )
 
 const (
-	smsCodeLength       = 6
-	smsRateLimitSeconds = 60
+	SMSCodeLength       = 6
+	SMSRateLimitSeconds = 60
 )
 
 var (
@@ -202,7 +202,7 @@ func (s *SMS) SendCodeToUser(w http.ResponseWriter, r *http.Request, pid, number
 		if err != nil {
 			return err
 		}
-		suppress = time.Now().UTC().Unix()-last < smsRateLimitSeconds
+		suppress = time.Now().UTC().Unix()-last < SMSRateLimitSeconds
 	}
 
 	if suppress {
@@ -482,7 +482,7 @@ func (s *SMSValidator) validateCode(w http.ResponseWriter, r *http.Request, user
 func generateRandomCode() (code string, err error) {
 	sb := new(strings.Builder)
 
-	random := make([]byte, smsCodeLength)
+	random := make([]byte, SMSCodeLength)
 	if _, err = io.ReadFull(rand.Reader, random); err != nil {
 		return "", err
 	}
