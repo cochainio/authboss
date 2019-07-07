@@ -53,6 +53,13 @@ func (l *Logout) Logout(w http.ResponseWriter, r *http.Request) error {
 	authboss.DelKnownSession(w)
 	authboss.DelKnownCookie(w)
 
+	handled, err := l.Authboss.Events.FireAfter(authboss.EventLogout, w, r)
+	if err != nil {
+		return err
+	} else if handled {
+		return nil
+	}
+
 	ro := authboss.RedirectOptions{
 		Code:         http.StatusTemporaryRedirect,
 		RedirectPath: l.Authboss.Paths.LogoutOK,

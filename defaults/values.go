@@ -59,7 +59,13 @@ func (u UserValues) GetShouldRemember() bool {
 type ConfirmValues struct {
 	HTTPFormValidator
 
+	PID   string
 	Token string
+}
+
+// GetPID from the values
+func (c ConfirmValues) GetPID() string {
+	return c.PID
 }
 
 // GetToken from the confirm values
@@ -238,6 +244,7 @@ func (h HTTPBodyReader) Read(page string, r *http.Request) (authboss.Validator, 
 	case "confirm":
 		return ConfirmValues{
 			HTTPFormValidator: HTTPFormValidator{Values: values, Ruleset: rules},
+			PID:               values[FormValueEmail],
 			Token:             values[FormValueConfirm],
 		}, nil
 	case "login":

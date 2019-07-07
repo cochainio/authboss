@@ -34,6 +34,7 @@ type UserValuer interface {
 type ConfirmValuer interface {
 	Validator
 
+	GetPID() string
 	GetToken() string
 }
 

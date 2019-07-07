@@ -27,6 +27,7 @@ const (
 	// EmailConfirmTxt is the name of the text template for e-mails
 	EmailConfirmTxt = "confirm_txt"
 
+	FormValueEmail = "email"
 	// FormValueConfirm is the name of the form value for
 	FormValueConfirm = "cnf"
 
@@ -154,7 +155,7 @@ var goConfirmEmail = func(c *Confirm, ctx context.Context, to, token string) {
 func (c *Confirm) SendConfirmEmail(ctx context.Context, to, token string) {
 	logger := c.Authboss.Logger(ctx)
 
-	mailURL := c.mailURL(token)
+	mailURL := c.mailURL(to, token)
 
 	email := authboss.Email{
 		To:       []string{to},
@@ -207,6 +208,24 @@ func (c *Confirm) Get(w http.ResponseWriter, r *http.Request) error {
 	selector := base64.StdEncoding.EncodeToString(selectorBytes[:])
 
 	storer := authboss.EnsureCanConfirm(c.Authboss.Config.Storage.Server)
+
+	userByPID, err := storer.Load(r.Context(), values.GetPID())
+	if err != nil {
+		if err != authboss.ErrUserNotFound {
+			return err
+		}
+	} else {
+		cuser := authboss.MustBeConfirmable(userByPID)
+		if cuser.GetConfirmed() {
+			ro := authboss.RedirectOptions{
+				Code:         http.StatusTemporaryRedirect,
+				Success:      "You had confirmed your account.",
+				RedirectPath: c.Authboss.Config.Paths.ConfirmOK,
+			}
+			return c.Authboss.Config.Core.Redirector.Redirect(w, r, ro)
+		}
+	}
+
 	user, err := storer.LoadByConfirmSelector(r.Context(), selector)
 	if err == authboss.ErrUserNotFound {
 		logger.Infof("confirm selector was not found in database: %s", selector)
@@ -218,6 +237,11 @@ func (c *Confirm) Get(w http.ResponseWriter, r *http.Request) error {
 	dbVerifierBytes, err := base64.StdEncoding.DecodeString(user.GetConfirmVerifier())
 	if err != nil {
 		logger.Infof("invalid confirm verifier stored in database: %s", user.GetConfirmVerifier())
+		return c.invalidToken(w, r)
+	}
+
+	if user.GetPID() != values.GetPID() {
+		logger.Infof("invalid pid stored in database: %s", user.GetPID())
 		return c.invalidToken(w, r)
 	}
 
@@ -244,8 +268,11 @@ func (c *Confirm) Get(w http.ResponseWriter, r *http.Request) error {
 	return c.Authboss.Config.Core.Redirector.Redirect(w, r, ro)
 }
 
-func (c *Confirm) mailURL(token string) string {
-	query := url.Values{FormValueConfirm: []string{token}}
+func (c *Confirm) mailURL(to, token string) string {
+	query := url.Values{
+		FormValueEmail:   []string{to},
+		FormValueConfirm: []string{token},
+	}
 
 	if len(c.Config.Mail.RootURL) != 0 {
 		return fmt.Sprintf("%s?%s", c.Config.Mail.RootURL+"/confirm", query.Encode())
